@@ -24,4 +24,8 @@ go.work.sum
 # env file
 .env
 
+# Config file
 .mh.json
+
+# Output of the go build command
+bin/

@@ -21,7 +21,7 @@ func CreateRequest(method, rootURL, urlPath string, args []string) (*http.Reques
 	}
 
 	var body io.Reader
-	if method == "POST" || method == "PUT" {
+	if method == "POST" || method == "PUT" || method == "PATCH" {
 		jsonBody := parseArgsToJSON(args)
 		bodyData, err := json.Marshal(jsonBody)
 		if err != nil {
@@ -42,7 +42,7 @@ func CreateRequest(method, rootURL, urlPath string, args []string) (*http.Reques
 	return req, nil
 }
 
-func ExecuteRequest(req *http.Request) error {
+func ExecuteRequest(req *http.Request, outputStatus bool) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -50,7 +50,10 @@ func ExecuteRequest(req *http.Request) error {
 	}
 	defer resp.Body.Close()
 
-	colorizeStatus(resp.StatusCode)
+	if outputStatus {
+		colorizeStatus(resp.StatusCode)
+	}
+
 	body, _ := io.ReadAll(resp.Body)
 
 	contentType := resp.Header.Get("Content-Type")

@@ -10,7 +10,7 @@ import (
 
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:   "cli",
+		Use:   "mh",
 		Short: "CLI Tool for interacting with APIs",
 	}
 
@@ -21,6 +21,7 @@ func main() {
 		commands.PostCmd,
 		commands.PutCmd,
 		commands.DeleteCmd,
+		commands.PatchCmd,
 	)
 
 	// Execute CLI
