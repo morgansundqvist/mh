@@ -10,6 +10,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -18,6 +19,18 @@ func CreateRequest(method, rootURL, urlPath string, args []string) (*http.Reques
 	fullURL, err := joinURL(rootURL, urlPath)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Parse query parameters
+	queryParams := parseArgsToQueryParams(args)
+
+	// Add query parameters to URL
+	if len(queryParams) > 0 {
+		q := fullURL.Query()
+		for key, value := range queryParams {
+			q.Add(key, value)
+		}
+		fullURL.RawQuery = q.Encode()
 	}
 
 	var body io.Reader
@@ -39,11 +52,19 @@ func CreateRequest(method, rootURL, urlPath string, args []string) (*http.Reques
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	headers := parseArgsToHeaders(args)
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
 	return req, nil
 }
 
 func ExecuteRequest(req *http.Request, outputStatus bool) error {
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Minute,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -81,15 +102,41 @@ func joinURL(root, urlPath string) (*url.URL, error) {
 
 func parseArgsToJSON(args []string) map[string]interface{} {
 	jsonBody := make(map[string]interface{})
-	re := regexp.MustCompile(`^([a-zA-Z0-9_-]+)=(.*)$`)
+	jsonBodyRe := regexp.MustCompile(`^([a-zA-Z0-9_-]+)=(.*)$`)
 
 	for _, arg := range args {
-		if matches := re.FindStringSubmatch(arg); matches != nil {
+		if matches := jsonBodyRe.FindStringSubmatch(arg); matches != nil {
 			key, value := matches[1], matches[2]
 			jsonBody[key] = parseValue(value)
 		}
 	}
 	return jsonBody
+}
+
+func parseArgsToQueryParams(args []string) map[string]string {
+	queryParams := make(map[string]string)
+	queryParamRe := regexp.MustCompile(`^([a-zA-Z0-9_-]+)\|(.*)$`)
+
+	for _, arg := range args {
+		if matches := queryParamRe.FindStringSubmatch(arg); matches != nil {
+			key, value := matches[1], matches[2]
+			queryParams[key] = value
+		}
+	}
+	return queryParams
+}
+
+func parseArgsToHeaders(args []string) map[string]string {
+	headers := make(map[string]string)
+	headerRe := regexp.MustCompile(`^([a-zA-Z0-9_-]+):(.*)$`)
+
+	for _, arg := range args {
+		if matches := headerRe.FindStringSubmatch(arg); matches != nil {
+			key, value := matches[1], matches[2]
+			headers[key] = value
+		}
+	}
+	return headers
 }
 
 func parseValue(value string) interface{} {
